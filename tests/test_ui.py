@@ -10,12 +10,16 @@ def login_page(page):
     return login_page
 
 
-def test_login(login_page):
+def test_login(login_page, page):
     
     login_page.login("student", "Password123")
 
     expect(login_page.get_success_message()).to_have_text(
         "Logged In Successfully"
+    )
+
+    expect(page).to_have_url(
+        "https://practicetestautomation.com/logged-in-successfully/"
     )
 
 @pytest.mark.parametrize(
