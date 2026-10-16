@@ -5,5 +5,5 @@ INVALID_LOGIN_CASES = [
 ]
 
 SUCCESSFUL_LOGIN_CASES = [
-    ("student", "Password123", "Logged In Successfully"),
+    ("student", "Password123", "pina"),
 ]
