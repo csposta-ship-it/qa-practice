@@ -9,3 +9,4 @@ allure-results/
 allure-report-ci/
 allure-results-ci/
 allure-report/
+__pycache__/
