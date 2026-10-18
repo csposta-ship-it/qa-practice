@@ -49,6 +49,17 @@ def init_db():
             connection.execute(
             "ALTER TABLE users ADD COLUMN company_name TEXT"
             )
+
+        connection.execute("""
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    event_type TEXT NOT NULL,
+                    details TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            """)
         
         audit_columns = {
             row["name"]
@@ -68,18 +79,6 @@ def init_db():
             idx_users_customer_id
             ON users(customer_id)
         """)
-
-        connection.execute("""
-            CREATE TABLE IF NOT EXISTS audit_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                event_type TEXT NOT NULL,
-                details TEXT,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            )
-        """)
-
 
 def hash_password(password: str) -> str:
     return password_hash.hash(password)
