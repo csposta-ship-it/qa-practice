@@ -3,3 +3,4 @@ requests
 playwright
 pytest-playwright
 allure-pytest
+uvicorn
