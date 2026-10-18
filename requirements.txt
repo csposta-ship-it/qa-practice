@@ -5,3 +5,6 @@ pytest-playwright
 allure-pytest
 uvicorn
 fastapi
+pydantic
+email-validator
+pwdlib[argon2]
