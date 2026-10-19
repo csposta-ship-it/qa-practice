@@ -13,14 +13,14 @@ DATABASE_PATH = (
 password_hash = PasswordHash.recommended()
 
 
-def get_connection():
-    connection = sqlite3.connect(DATABASE_PATH)
+def get_connection(db_path=DATABASE_PATH):
+    connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row
     return connection
 
 
-def init_db():
-    with get_connection() as connection:
+def init_db(db_path=DATABASE_PATH):
+    with get_connection(db_path) as connection:
         connection.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
