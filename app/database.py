@@ -10,6 +10,12 @@ DATABASE_PATH = (
     / "qa_practice.db"
 )
 
+USER_MIGRATIONS = {
+   'customer_id':"TEXT",
+   'type':"TEXT NOT NULL DEFAULT 'RETAIL'",
+   'company_name':"TEXT"
+}
+
 password_hash = PasswordHash.recommended()
 
 
@@ -35,19 +41,10 @@ def init_db(db_path=DATABASE_PATH):
             for row in connection.execute("PRAGMA table_info(users)")
         }
 
-        if "customer_id" not in columns:
-            connection.execute(
-                "ALTER TABLE users ADD COLUMN customer_id TEXT"
-            )
-
-        if "type" not in columns:
-            connection.execute(
-            "ALTER TABLE users ADD COLUMN type TEXT NOT NULL DEFAULT 'RETAIL'"
-            )
-
-        if "company_name" not in columns:
-            connection.execute(
-            "ALTER TABLE users ADD COLUMN company_name TEXT"
+        for name, value in USER_MIGRATIONS.items():
+            if name not in columns:
+                connection.execute(
+                f"ALTER TABLE users ADD COLUMN {name} {value}"
             )
 
         connection.execute("""
