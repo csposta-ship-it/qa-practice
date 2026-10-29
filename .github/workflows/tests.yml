@@ -19,6 +19,7 @@ concurrency:
 jobs:
   test-and-report:
     runs-on: ubuntu-latest
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -38,6 +39,102 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Start Keycloak
+        env:
+          KEYCLOAK_ADMIN: admin
+          KEYCLOAK_ADMIN_PASSWORD: ci-admin-password
+        run: |
+          docker run -d \
+            --name keycloak-ci \
+            -p 8080:8080 \
+            -e KC_BOOTSTRAP_ADMIN_USERNAME="$KEYCLOAK_ADMIN" \
+            -e KC_BOOTSTRAP_ADMIN_PASSWORD="$KEYCLOAK_ADMIN_PASSWORD" \
+            -e KC_HEALTH_ENABLED=true \
+            -v "$GITHUB_WORKSPACE/keycloak:/opt/keycloak/data/import:ro" \
+            quay.io/keycloak/keycloak:26.8.1 \
+            start-dev --import-realm
+
+          for i in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:8080/realms/qa-practice/.well-known/openid-configuration > /dev/null; then
+              echo "Keycloak is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Keycloak failed to start. Container logs:"
+          docker logs keycloak-ci
+          exit 1
+
+      - name: Create Keycloak test users
+        env:
+          KEYCLOAK_ADMIN: admin
+          KEYCLOAK_ADMIN_PASSWORD: ci-admin-password
+          QA_TESTER_PASSWORD: ${{ secrets.QA_TESTER_PASSWORD }}
+          QA_READER_PASSWORD: ${{ secrets.QA_READER_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Getting Keycloak admin token..."
+
+          TOKEN=$(curl --fail --silent --show-error \
+            -X POST "http://127.0.0.1:8080/realms/master/protocol/openid-connect/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "username=$KEYCLOAK_ADMIN" \
+            --data-urlencode "password=$KEYCLOAK_ADMIN_PASSWORD" \
+            --data-urlencode "grant_type=password" \
+            --data-urlencode "client_id=admin-cli" |
+            jq -er '.access_token')
+
+          create_user() {
+            local username="$1"
+            local password="$2"
+            local role="$3"
+
+            echo "Creating user: $username"
+
+            local status
+            status=$(curl --silent --show-error \
+              -o /tmp/keycloak-user-response.json \
+              -w "%{http_code}" \
+              -X POST "http://127.0.0.1:8080/admin/realms/qa-practice/users" \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "$(jq -n \
+                --arg username "$username" \
+                --arg password "$password" \
+                '{username:$username,enabled:true,credentials:[{type:"password",value:$password,temporary:false}]}')")
+
+            if [ "$status" != "201" ]; then
+              echo "Failed to create $username (HTTP $status)."
+              cat /tmp/keycloak-user-response.json
+              exit 1
+            fi
+
+            local role_json
+            role_json=$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer $TOKEN" \
+              "http://127.0.0.1:8080/admin/realms/qa-practice/roles/$role")
+
+            local user_id
+            user_id=$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer $TOKEN" \
+              "http://127.0.0.1:8080/admin/realms/qa-practice/users?username=$username&exact=true" |
+              jq -er '.[0].id')
+
+            curl --fail --silent --show-error \
+              -X POST "http://127.0.0.1:8080/admin/realms/qa-practice/users/$user_id/role-mappings/realm" \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "[$role_json]"
+
+            echo "Created $username and assigned role $role."
+          }
+
+          create_user "qa-tester" "$QA_TESTER_PASSWORD" "db_admin"
+          create_user "qa-reader" "$QA_READER_PASSWORD" "db_reader"
+          
       - name: Install Allure CLI
         run: npm install -g allure-commandline
 
