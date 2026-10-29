@@ -4,9 +4,13 @@ from app.logging_config import configure_logging
 from test_data.user_factory import create_user_data
 
 @pytest.fixture
-def create_new_user():
+def create_new_user(tester_access_token):
     user = create_user_data("RETAIL")
-    response = requests.post("http://127.0.0.1:8000/users", json=user)
+    response = requests.post(
+        "http://127.0.0.1:8000/users",
+        json=user,
+        headers={"Authorization": f"Bearer {tester_access_token}"}
+    )
     yield user, response
 
 def test_create_post_with_logging(create_new_user):
@@ -24,9 +28,4 @@ def test_create_post_with_logging(create_new_user):
     assert "customer_id" in response.json()
 
     logger.info("Finished test_create_post_with_logging")
-
-
-
-
-    
 

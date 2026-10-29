@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from app.security_utils import mask_sensitive_data
 from app.database import create_user, init_db, write_audit_log
 from app.logging_config import configure_logging
+from app.keycloak_auth import get_current_user, require_role
 from typing import Literal
 import time
 import uuid
@@ -118,7 +119,7 @@ async def log_http_request(request, call_next):
         response.headers["X-Request-ID"] = request_id
 
         # Csak a regisztráció üzleti eseményeit írjuk az auditlogba
-        
+
         if request.method == "POST" and request.url.path == "/users":
             success = 200 <= response.status_code < 300
 
@@ -162,7 +163,11 @@ def health_check():
     return {"status": "ok"}
 
 @app.post("/users", status_code=201)
-def register_user(user: UserCreate):
+def register_user(
+    user: UserCreate,
+    current_user: dict = Depends(require_role("db_admin"))
+):
+
     logger = logging.getLogger("qa_practice")
     try:
         result = create_user(
@@ -178,7 +183,7 @@ def register_user(user: UserCreate):
             result["id"],
         )
         return result
-    
+
     except sqlite3.IntegrityError as error:
         logger.warning(
             "User registration failed: username or email already exists"

@@ -8,3 +8,5 @@ fastapi
 pydantic
 email-validator
 pwdlib[argon2]
+PyJWT[crypto]
+python-dotenv

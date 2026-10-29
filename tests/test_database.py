@@ -8,7 +8,7 @@ import allure
 )
 
 def test_init_db_creates_tables(tmp_path):
-    
+
     db_path = tmp_path / "test_db.db"
     init_db(db_path)
 
@@ -61,8 +61,8 @@ def test_init_db_migrates_users_table(tmp_path):
 
     init_db(db_path)
 
-    with get_connection(db_path) as connection: 
-        
+    with get_connection(db_path) as connection:
+
         user_columns = connection.execute(
             "PRAGMA table_info(users)"
         )
@@ -72,9 +72,9 @@ def test_init_db_migrates_users_table(tmp_path):
             FROM users
             WHERE username = 'legacy_user';
         """)
-        
+
         columns = user_columns.fetchall()
-        
+
         column_names = {row[1] for row in columns}
 
         legacy_data = legacy_user.fetchone()
@@ -97,26 +97,26 @@ def test_init_db_migrates_audit_logs(tmp_path):
     db_path= tmp_path / "legacy.db"
     with get_connection(db_path) as connection:
         connection.execute("""
-                CREATE TABLE IF NOT EXISTS audit_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    event_type TEXT NOT NULL,
-                    details TEXT,
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(id)
-                )
-            """)
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                event_type TEXT NOT NULL,
+                details TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
 
     init_db(db_path)
 
-    with get_connection(db_path) as connection: 
-        
+    with get_connection(db_path) as connection:
+
         audit_columns = connection.execute(
             "PRAGMA table_info(audit_logs)"
         )
-                
+
         columns = audit_columns.fetchall()
-        
+
         column_names = {row[1] for row in columns}
 
         assert "request_id" in column_names
@@ -137,43 +137,48 @@ def test_init_db_can_run_multiple_times(tmp_path):
     init_db(db_path)
 
     with get_connection(db_path) as connection:
-            table_cursor = connection.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            )
-    
-            column_cursor = connection.execute(
-                "PRAGMA table_info(audit_logs)"
-            )
-    
-            rows = table_cursor.fetchall()
-    
-            table_names = {row[0] for row in rows}
-    
-            columns = column_cursor.fetchall()
-    
-            column_names = {row[1] for row in columns}
-    
-            assert "audit_logs" in table_names
-            assert "request_id" in column_names
-            assert "request_data" in column_names
-            assert "response_data" in column_names
+        cursor = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
 
-            cursor = connection.execute(
-                 "PRAGMA table_info(users)"
-            )
+        audit_column_cursor = connection.execute(
+            "PRAGMA table_info(audit_logs)"
+        )
 
-            table_names = {row[0] for row in rows}
+        audit_rows = cursor.fetchall()
 
-            columns = cursor.fetchall()
+        table_names = {row[0] for row in audit_rows}
 
-            column_names = {row[1] for row in columns}
+        columns = audit_column_cursor.fetchall()
 
-            assert "users" in table_names
-            assert "id" in column_names
-            assert "username" in column_names
-            assert "email" in column_names
-            assert "password_hash" in column_names
-            assert "customer_id" in column_names
-            assert "type" in column_names
-            assert "company_name" in column_names
-            
+        column_names = {row[1] for row in columns}
+
+        assert "audit_logs" in table_names
+        assert "request_id" in column_names
+        assert "request_data" in column_names
+        assert "response_data" in column_names
+
+        users_cursor = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+
+        users_column_cursor = connection.execute(
+            "PRAGMA table_info(users)"
+        )
+
+        users_rows = users_cursor.fetchall()
+
+        table_names = {row[0] for row in users_rows}
+
+        columns = users_column_cursor.fetchall()
+
+        column_names = {row[1] for row in columns}
+
+        assert "users" in table_names
+        assert "id" in column_names
+        assert "username" in column_names
+        assert "email" in column_names
+        assert "password_hash" in column_names
+        assert "customer_id" in column_names
+        assert "type" in column_names
+        assert "company_name" in column_names

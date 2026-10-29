@@ -1,6 +1,9 @@
 import sqlite3
+from contextlib import closing
 from pathlib import Path
+
 from pwdlib import PasswordHash
+
 
 DATABASE_PATH = (
     Path.home()
@@ -11,9 +14,9 @@ DATABASE_PATH = (
 )
 
 USER_MIGRATIONS = {
-   'customer_id':"TEXT",
-   'type':"TEXT NOT NULL DEFAULT 'RETAIL'",
-   'company_name':"TEXT"
+    'customer_id': "TEXT",
+    'type': "TEXT NOT NULL DEFAULT 'RETAIL'",
+    'company_name': "TEXT",
 }
 
 password_hash = PasswordHash.recommended()
@@ -26,28 +29,26 @@ def get_connection(db_path=DATABASE_PATH):
 
 
 def init_db(db_path=DATABASE_PATH):
-    with get_connection(db_path) as connection:
-        connection.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE,
-                email TEXT NOT NULL UNIQUE,
-                password_hash TEXT NOT NULL
-            )
-        """)
-
-        columns = {
-            row["name"]
-            for row in connection.execute("PRAGMA table_info(users)")
-        }
-
-        for name, value in USER_MIGRATIONS.items():
-            if name not in columns:
-                connection.execute(
-                f"ALTER TABLE users ADD COLUMN {name} {value}"
-            )
-
-        connection.execute("""
+    with closing(get_connection(db_path)) as connection:
+        with connection:
+            connection.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL UNIQUE,
+                    email TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL
+                )
+            """)
+            columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(users)")
+            }
+            for name, value in USER_MIGRATIONS.items():
+                if name not in columns:
+                    connection.execute(
+                        f"ALTER TABLE users ADD COLUMN {name} {value}"
+                    )
+            connection.execute("""
                 CREATE TABLE IF NOT EXISTS audit_logs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER,
@@ -57,28 +58,28 @@ def init_db(db_path=DATABASE_PATH):
                     FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             """)
-        
-        audit_columns = {
-            row["name"]
-            for row in connection.execute(
-                "PRAGMA table_info(audit_logs)"
-            )
-        }
-
-        for column in ("request_id", "request_data", "response_data"):
-            if column not in audit_columns:
-                connection.execute(
-                    f"ALTER TABLE audit_logs ADD COLUMN {column} TEXT"
+            audit_columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(audit_logs)"
                 )
-    
-        connection.execute("""
-            CREATE UNIQUE INDEX IF NOT EXISTS
-            idx_users_customer_id
-            ON users(customer_id)
-        """)
+            }
+            for column in ("request_id", "request_data", "response_data"):
+                if column not in audit_columns:
+                    connection.execute(
+                        f"ALTER TABLE audit_logs ADD COLUMN {column} TEXT"
+                    )
+
+            connection.execute("""
+                CREATE UNIQUE INDEX IF NOT EXISTS
+                idx_users_customer_id
+                ON users(customer_id)
+            """)
+
 
 def hash_password(password: str) -> str:
     return password_hash.hash(password)
+
 
 def create_user(
     username: str,
@@ -111,8 +112,10 @@ def create_user(
             "customer_id": customer_id,
         }
 
+
 def verify_password(password: str, hashed_password: str) -> bool:
     return password_hash.verify(password, hashed_password)
+
 
 def write_audit_log(
     event_type: str,
@@ -123,7 +126,6 @@ def write_audit_log(
     response_data: str | None = None,
 ):
     with get_connection() as connection:
-        
         connection.execute(
             """
             INSERT INTO audit_logs (

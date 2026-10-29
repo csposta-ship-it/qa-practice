@@ -7,3 +7,10 @@ INVALID_LOGIN_CASES = [
 SUCCESSFUL_LOGIN_CASES = [
     ("student", "Password123", "Logged In Successfully"),
 ]
+
+dummy_user = {
+    "username": "test_user",
+    "email": "test@example.com",
+    "password": "dummy_password",
+    "type": "RETAIL"
+}
