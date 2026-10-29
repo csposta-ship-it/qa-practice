@@ -80,11 +80,17 @@ def get_access_token(username, password):
             page.locator('input[name="username"]').fill(username)
             page.locator('input[name="password"]').fill(password)
             page.locator("#kc-login").click()
+            page.wait_for_timeout(2000)
+            print("URL after login:", page.url)
+
             received = CallbackHandler.authorization_received.wait(timeout=30)
 
             if not received:
+                print("Current URL:", page.url)
+                print("Page title:", page.title())
+                print("Page content:", page.locator("body").inner_text())
                 raise TimeoutError("Authorization callback did not arrive")
-
+            
         token_data = {
             "grant_type" : "authorization_code",
             "client_id" : CLIENT,
