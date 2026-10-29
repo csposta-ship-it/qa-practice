@@ -106,7 +106,13 @@ jobs:
               --data "$(jq -n \
                 --arg username "$username" \
                 --arg password "$password" \
-                '{username:$username,enabled:true,credentials:[{type:"password",value:$password,temporary:false}]}')")
+                '{username:$username,
+                  enabled:true,
+                  email:($username + "@example.com"),
+                  firstName:"QA",
+                  lastName:"Tester",
+                  emailVerified:true,
+                  credentials:[{type:"password",value:$password,temporary:false}]}')"
 
             if [ "$status" != "201" ]; then
               echo "Failed to create $username (HTTP $status)."
