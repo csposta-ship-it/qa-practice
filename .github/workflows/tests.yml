@@ -172,7 +172,7 @@ jobs:
           QA_READER_USERNAME: qa-reader
           QA_TESTER_PASSWORD: ${{ secrets.QA_TESTER_PASSWORD }}
           QA_READER_PASSWORD: ${{ secrets.QA_READER_PASSWORD }}
-        run: python -m pytest -v --alluredir=allure-results
+        run: python -m pytest -v -s --alluredir=allure-results
 
       - name: Upload Allure results
         if: always()
