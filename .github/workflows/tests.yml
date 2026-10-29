@@ -70,6 +70,8 @@ jobs:
         env:
           KEYCLOAK_ADMIN: admin
           KEYCLOAK_ADMIN_PASSWORD: ci-admin-password
+          QA_TESTER_USERNAME: qa-tester
+          QA_READER_USERNAME: qa-reader
           QA_TESTER_PASSWORD: ${{ secrets.QA_TESTER_PASSWORD }}
           QA_READER_PASSWORD: ${{ secrets.QA_READER_PASSWORD }}
         shell: bash
@@ -165,6 +167,11 @@ jobs:
       - name: Run tests
         id: tests
         continue-on-error: true
+        env:
+          QA_TESTER_USERNAME: qa-tester
+          QA_READER_USERNAME: qa-reader
+          QA_TESTER_PASSWORD: ${{ secrets.QA_TESTER_PASSWORD }}
+          QA_READER_PASSWORD: ${{ secrets.QA_READER_PASSWORD }}
         run: python -m pytest -v --alluredir=allure-results
 
       - name: Upload Allure results
