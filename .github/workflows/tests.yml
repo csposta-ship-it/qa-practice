@@ -96,6 +96,26 @@ jobs:
 
             echo "Creating user: $username"
 
+            local user_json
+            user_json=$(jq -n \
+              --arg username "$username" \
+              --arg password "$password" \
+              '{
+                username: $username,
+                enabled: true,
+                email: ($username + "@example.com"),
+                firstName: "QA",
+                lastName: "Tester",
+                emailVerified: true,
+                credentials: [
+                  {
+                    type: "password",
+                    value: $password,
+                    temporary: false
+                  }
+                ]
+              }')
+
             local status
             status=$(curl --silent --show-error \
               -o /tmp/keycloak-user-response.json \
@@ -103,16 +123,7 @@ jobs:
               -X POST "http://127.0.0.1:8080/admin/realms/qa-practice/users" \
               -H "Authorization: Bearer $TOKEN" \
               -H "Content-Type: application/json" \
-              --data "$(jq -n \
-                --arg username "$username" \
-                --arg password "$password" \
-                '{username:$username,
-                  enabled:true,
-                  email:($username + "@example.com"),
-                  firstName:"QA",
-                  lastName:"Tester",
-                  emailVerified:true,
-                  credentials:[{type:"password",value:$password,temporary:false}]}')"
+              --data "$user_json")
 
             if [ "$status" != "201" ]; then
               echo "Failed to create $username (HTTP $status)."
@@ -142,7 +153,7 @@ jobs:
 
           create_user "qa-tester" "$QA_TESTER_PASSWORD" "db_admin"
           create_user "qa-reader" "$QA_READER_PASSWORD" "db_reader"
-          
+
       - name: Install Allure CLI
         run: npm install -g allure-commandline
 
